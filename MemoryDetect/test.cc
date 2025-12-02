@@ -2,6 +2,7 @@
 #include <memory>
 #include <mutex>
 
+//open the mutton of memory detecting
 #define ENABLE_DEBUG_NEW
 #include "MemoryDetect.h"
 
