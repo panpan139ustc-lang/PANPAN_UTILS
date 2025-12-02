@@ -2,7 +2,7 @@
 #define _CRT_SECURE_NO_WARNINGS 1
 #include "MemoryDetect.h"
 
-//È¡Ïû¶ÔnewµÄÖØ¶¨Òå£¬·ÀÖ¹Ó°ÏìÆäËû´úÂë
+//å–æ¶ˆå¯¹newçš„é‡å®šä¹‰ï¼Œé˜²æ­¢å½±å“å…¶ä»–ä»£ç 
 #ifdef new
 #undef new
 #endif
@@ -53,21 +53,21 @@ struct new_ptr_list_t {
 	unsigned magic; ///< Magic number for error detection
 };
 
-static const unsigned DEBUG_NEW_MAGIC = 0x4442474E; // Ä§Êı
+static const unsigned DEBUG_NEW_MAGIC = 0x4442474E; // MAGIC_NUMBER
 
 static const int ALIGNED_LIST_ITEM_SIZE = ALIGN(sizeof(new_ptr_list_t));
 
-static new_ptr_list_t new_ptr_list = { &new_ptr_list, &new_ptr_list, 0, {""}, 0, 0, DEBUG_NEW_MAGIC };//Ë«Á´±íÍ·½Úµã
+static new_ptr_list_t new_ptr_list = { &new_ptr_list, &new_ptr_list, 0, {""}, 0, 0, DEBUG_NEW_MAGIC };//DOUBLE_LINKED LIST HEADER NODE
 
-static std::mutex new_ptr_lock; // ÊµÏÖ¶àÏß³Ì´®ĞĞ·ÃÎÊÁ´±í
+static std::mutex new_ptr_lock; // THE LOCK OF MULTI-THREADS'S VISITING THE LINKEDLIST
 
-static std::mutex new_output_lock; // ÊµÏÖ¶àÏß³Ì´®ĞĞÍù¿ØÖÆÌ¨´òÓ¡ĞÅÏ¢
+static std::mutex new_output_lock; // THE LOCK OF MULTI-THREADS'S PRINTING INFORMATION ON THE STDOUT
 
 static std::size_t total_mem_alloc = 0;
 
-bool new_autocheck_flag = true; //×Ô¶¯¼ì²é¿ª¹Ø
+bool new_autocheck_flag = true; //THE AUTOMATIC CHECK MUTTON 
 
-bool new_verbose_flag = false; //ÓÃÀ´ÊµÊ±¼ì²â
+bool new_verbose_flag = false; //THE REAL-TIME CHECK MUTTON
 
 static void print_position(const void* ptr, int line) {
 
@@ -106,7 +106,7 @@ static void* alloc_mem(std::size_t size, const char* file, int line, bool is_arr
 	ptr->magic = DEBUG_NEW_MAGIC;
 
 	{
-		//Í·²å·¨£¬²åÈëµ½new_ptr_listµÄÇ°Ãæ
+		//PUSH INTO THE FRONT OF THE LIST
 		std::unique_lock<std::mutex> lock(new_ptr_lock);
 		ptr->prev = new_ptr_list.prev;
 		ptr->next = &new_ptr_list;
@@ -135,7 +135,7 @@ static void free_pointer(void* usr_ptr, void* addr, bool is_array) {
 
 	new_ptr_list_t* ptr = (new_ptr_list_t*)((char*)usr_ptr - ALIGNED_LIST_ITEM_SIZE);
 
-	if (ptr->magic != DEBUG_NEW_MAGIC) { //¼ì²éÄÚ´æ¿éµÄÔªÊı¾İ(Êı×éÔ½½ç)ÊÇ·ñ±»ĞŞ¸Ä»ò·Ç·¨µÄÖ¸Õë(Õ»ÄÚ´æ»òÒÑÊÍ·ÅµÄÖ¸Õë)
+	if (ptr->magic != DEBUG_NEW_MAGIC) { // Check if the metadata of the memory block (array out of bounds) has been modified or if there are illegal pointers (stack memory or freed pointers)
 		{
 			std::unique_lock<std::mutex> lock(new_output_lock);
 			printf("delete%s: invalid pointer %p(", is_array ? "[]" : "", usr_ptr);
@@ -146,7 +146,7 @@ static void free_pointer(void* usr_ptr, void* addr, bool is_array) {
 		abort();
 	}
 
-	if ((unsigned)is_array != ptr->is_array) { //¿ÉÒÔ¼ì²ânew delete new[] delete[]ÊÇ·ñÅä¶ÔÊ¹ÓÃ
+	if ((unsigned)is_array != ptr->is_array) { //It can detect whether `new`, `delete`, `new[]`, and `delete[]` are used in pairs.
 		const char* msg;
 		if (is_array) {
 			msg = "delete[] after new";
@@ -182,7 +182,7 @@ static void free_pointer(void* usr_ptr, void* addr, bool is_array) {
 	free(ptr);
 }
 
-//¼ì²âÄÚ´æĞ¹Â¶
+//check the leak of memory
 int checkLeaks() {
 	int leak_cnt = 0;
 	
@@ -215,7 +215,7 @@ int checkLeaks() {
 	return leak_cnt;
 }
 
-//¼ì²âÄÚ´æÆÆ»µ
+//check the corruption of memory
 int checkMemCorruption() {
 	int corrupt_cnt = 0;
 	printf("*** Checking for memory corruption: START\n");
