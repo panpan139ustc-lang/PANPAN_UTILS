@@ -1,5 +1,3 @@
-#define MEMORY_DETECT_DISABLE_MACRO
-#define _CRT_SECURE_NO_WARNINGS 1
 #include "MemoryDetect.h"
 
 //取消对new的重定义，防止影响其他代码
